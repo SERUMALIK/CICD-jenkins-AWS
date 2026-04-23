@@ -16,17 +16,28 @@ node {
 
     stage('Deploy to EC2'){ 
         echo 'Deploying to EC2'
-        sh """
-            sudo mkdir -p ${appDir}
-            sudo chown -R jenkins:jenkins ${appDir}
+        stage('Deploy to EC2'){ 
+    echo 'Deploying to EC2'
+    sh """
+        sudo mkdir -p ${appDir}
+        sudo chown -R jenkins:jenkins ${appDir}
 
-            rsync -av --delete --exclude='.git' --exclude='node_modules' ./ ${appDir}
+        rsync -av --delete --exclude='.git' --exclude='node_modules' ./ ${appDir}
 
-            cd ${appDir}
-            sudo npm install
-            sudo npm run build
-            sudo fuser -k 3000/tcp || true
-            npm run start
-        """
-    }
+        cd ${appDir}
+
+        # Install dependencies (NO sudo)
+        npm install
+
+        # Build app (limit memory to avoid crash)
+        export NODE_OPTIONS="--max-old-space-size=512"
+        npm run build
+
+        # Stop old app if running
+        sudo fuser -k 3000/tcp || true
+
+        # Start app
+        npm run start &
+    """
+}
 }
